@@ -1,0 +1,141 @@
+
+<!DOCTYPE HTML>
+<html>
+   <head>
+      <meta charset="UTF-8">
+      <title>Visibility Polygon</title>
+
+   </head>
+   <body onload="init();">
+      <div align="center"><canvas id="canvas" width="500" height="500" ></canvas></div><br>
+      <div align="center">Click and drag.<br>(<a href="https://github.com/byronknoll/visibility-polygon-js">project link</a>)</div>
+   <script type="text/javascript" src="hammer.js"></script>
+   <script type="text/javascript" src="visibility_polygon.js"></script>
+   <script type="text/javascript">
+
+// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
+window.requestAnimFrame = (function() {
+	return  window.requestAnimationFrame       || 
+		window.webkitRequestAnimationFrame || 
+		window.mozRequestAnimationFrame    || 
+		window.oRequestAnimationFrame      || 
+		window.msRequestAnimationFrame     || 
+		function(/* function */ callback, /* DOMElement */ element){
+			window.setTimeout(callback, 1000 / 60);
+		};
+})();
+
+function init() {
+	var width = 500;
+	var height = 500;
+	var observer_x = 109;
+	var observer_y = 109;
+	var changed = true;
+	var polygons = [];
+	var segments = [];
+	var hammer = new Hammer(document.getElementById("canvas"));
+
+	setup();
+	requestAnimFrame(update);
+
+	function setup() {
+		polygons.push([[-1,-1],[width+1,-1],[width+1,height+1],[-1,height+1]]);
+		polygons.push([[240,240],[260,240],[260,260],[240,260]]);
+		polygons.push([[240,260],[260,260],[260,280],[240,280]]);
+		polygons.push([[260,240],[280,240],[280,260],[260,260]]);
+		polygons.push([[440,240],[460,240],[460,260],[440,260]]);
+		polygons.push([[250,100],[260,140],[240,140]]);
+		polygons.push([[280,100],[290,60],[270,60]]);
+		polygons.push([[310,100],[320,140],[300,140]]);
+		polygons.push([[50,450],[60,370],[70,450]]);
+		polygons.push([[450,450],[460,370],[470,450]]);
+		polygons.push([[50,50],[60,30],[70,50]]);
+		polygons.push([[450,50],[460,30],[470,50]]);
+		polygons.push([[140,340],[160,240],[180,340],[360,340],[360,360],[250,390],[140,360]]);
+		polygons.push([[140,140],[150,130],[150,145],[165,150],[160,160],[140,160]]);
+		for (var i = 0; i < 20; ++i) {
+			polygons.push([[240,410+i*4],[245,410+i*4],[245,411+i*4],[240,411+i*4]]);
+		}
+		segments = VisibilityPolygon.convertToSegments(polygons);
+		segments.push([[100, 150],[100, 100]]);
+		segments.push([[50, 125],[100, 125]]); // intersects
+		segments.push([[450, 100],[400, 150]]);
+		segments.push([[450, 150],[400, 100]]); // intersects
+		segments.push([[50, 250],[100, 250]]);
+		segments.push([[50, 250],[100, 250]]); // duplicate
+		segments.push([[140,40],[140,60]]);
+		segments.push([[140,60],[160,60]]);
+		segments.push([[160,60],[160,40]]);
+		segments.push([[160,40],[140,40]]);
+		segments = VisibilityPolygon.breakIntersections(segments);
+	};
+
+	hammer.ondrag = function(e) {
+		var x = e.position.x;
+		var y = e.position.y;
+		if (x < 0 || x > width || y < 0 || y > height) return;
+		for (var i = 1; i < polygons.length; ++i) {
+			if(VisibilityPolygon.inPolygon([x,y], polygons[i])) return;
+		}
+		observer_x = x;
+		observer_y = y;
+		changed = true;
+	};
+
+	function update() {
+		if (changed) {
+			var canvas = document.getElementById('canvas');
+			var ctx = canvas.getContext("2d");
+			ctx.clearRect(0, 0, width, height);
+			ctx.beginPath();
+			ctx.rect(0, 0, width, height);
+			ctx.fillStyle = '#666';
+			ctx.fill();
+
+			draw(ctx);
+			changed = false;
+		}
+		requestAnimFrame(update);
+	};
+
+	function draw(ctx) {
+		var poly = VisibilityPolygon.compute([observer_x, observer_y], segments);
+
+		for (var i = 1; i < polygons.length; ++i) {
+			ctx.beginPath();
+			ctx.moveTo(polygons[i][0][0], polygons[i][0][1]);
+			for (var j = 1; j < polygons[i].length; ++j) {
+				ctx.lineTo(polygons[i][j][0], polygons[i][j][1]);
+			}
+			ctx.fillStyle = "orange";
+			ctx.fill();
+		}
+
+		ctx.beginPath();
+		ctx.moveTo(poly[0][0], poly[0][1]);
+		for (var i = 1; i < poly.length; ++i) {
+			ctx.lineTo(poly[i][0], poly[i][1]);
+		}
+		ctx.fillStyle = "#aaa";
+		ctx.fill();
+
+		for (var i = 0; i < segments.length; ++i) {
+			ctx.beginPath();
+			ctx.moveTo(segments[i][0][0], segments[i][0][1]);
+			ctx.lineTo(segments[i][1][0], segments[i][1][1]);
+			ctx.strokeStyle = "black";
+			ctx.lineWidth = 2;
+			ctx.stroke();
+		}
+
+		ctx.beginPath();
+		ctx.arc(observer_x, observer_y, 5, 0, Math.PI*2, true);
+		ctx.fillStyle = "yellow";
+		ctx.fill();
+		ctx.strokeStyle = "black";
+		ctx.stroke();
+	};
+};
+   </script>
+   </body>
+</html>
